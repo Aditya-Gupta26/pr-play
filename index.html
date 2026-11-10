@@ -27,10 +27,13 @@
 <script>
 // The permanent link of the PufferRoyale play site (an unofficial research simulator). The game server runs on a
 // university cluster behind a Cloudflare quick tunnel whose address changes every two days; target.json (kept
-// current by the site job, hpc/play_link.py) names the current one. This page sends the visitor there with their own
-// ?token=... (it is never stored here), after checking that the server answers.
+// current by the site job, hpc/play_link.py) names the current one and the site's public access token (the owner
+// chose an open link on 2026-11-09; players sign in with name + PIN). This page sends the visitor there with that
+// token (an older ?token= in the visitor's link is replaced, so links keep working after the token changes; any
+// other parameter such as &owner= is kept), after checking that the server answers.
 const REPO = "Aditya-Gupta26/pr-play";
 const OK_URL = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
+const OK_TOKEN = /^[A-Za-z0-9_-]{8,64}$/;
 const $ = id => document.getElementById(id);
 async function readTarget() {
   const tries = [["https://api.github.com/repos/" + REPO + "/contents/target.json", {Accept: "application/vnd.github.raw+json"}],
@@ -52,7 +55,10 @@ async function go() {
   const t = await readTarget();
   if (t && t.status === "up" && OK_URL.test(t.url) && await alive(t.url)) {
     $("msg").textContent = "Taking you to the game…";
-    location.replace(t.url + "/" + location.search + location.hash);
+    const q = new URLSearchParams(location.search);
+    if (t.token && OK_TOKEN.test(t.token)) q.set("token", t.token);
+    const qs = q.toString();
+    location.replace(t.url + "/" + (qs ? "?" + qs : "") + location.hash);
     return;
   }
   waits++;
@@ -61,7 +67,6 @@ async function go() {
     ". If it takes long, try again later.";
   setTimeout(go, Math.min(60000, 15000 + 5000 * waits));
 }
-if (!new URLSearchParams(location.search).get("token")) $("sub").textContent = "Note: your link should end in ?token=…";
 go();
 </script>
 </body>
